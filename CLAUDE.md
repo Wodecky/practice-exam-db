@@ -43,6 +43,16 @@ sqitch status
 sqitch deploy db:sqlite:practice_exam.db
 ```
 
+## Migration naming
+
+Every change name must be prefixed with a UTC timestamp in `YYYYMMDDHHMMSS` format so that directory listings under `deploy/`, `revert/`, and `verify/` match deployment order:
+
+```bash
+sqitch add 20260518145643_create_exams -n "Create exams table"
+```
+
+The prefix becomes part of the change name in `sqitch.plan`, so `--requires` references and revert targets include it (e.g., `sqitch revert --to 20260518145643_create_exams`). Generate the prefix from the current UTC time at add-time with `date -u +%Y%m%d%H%M%S`.
+
 ## Migration structure
 
 Each migration lives in three files:
@@ -73,6 +83,37 @@ id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16))))
 ```
 
 Never use `INTEGER PRIMARY KEY` or `AUTOINCREMENT`.
+
+## Timestamps
+
+Every table must have:
+
+- `created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`
+- `updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP`
+
+`updated_at` must be maintained by the database, not the application. Add an `AFTER UPDATE` trigger alongside every table:
+
+```sql
+CREATE TRIGGER IF NOT EXISTS trg_<table>_updated_at
+AFTER UPDATE ON <table>
+FOR EACH ROW
+WHEN NEW.updated_at IS OLD.updated_at
+BEGIN
+    UPDATE <table> SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+END;
+```
+
+The `WHEN NEW.updated_at IS OLD.updated_at` guard prevents trigger recursion and lets the application override `updated_at` explicitly (e.g., for backfills) without the trigger clobbering the value.
+
+Revert scripts must `DROP TRIGGER IF EXISTS trg_<table>_updated_at` before dropping the table.
+
+## Idempotency
+
+All migrations must be idempotent so they can be safely re-run after partial failures or when applied by hand.
+
+- Deploy scripts: use `CREATE TABLE IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`, `CREATE VIEW IF NOT EXISTS`, etc.
+- Revert scripts: use `DROP TABLE IF EXISTS`, `DROP INDEX IF EXISTS`, etc.
+- SQLite's `ALTER TABLE` has no `IF NOT EXISTS` clause. Guard column additions with a `PRAGMA table_info(<table>)` check in application code, or accept that `ALTER TABLE` steps are not idempotent and must be split into their own change.
 
 ## Dependencies between changes
 
