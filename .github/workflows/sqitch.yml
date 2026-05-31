@@ -1,0 +1,59 @@
+name: sqitch
+
+# Round-trip every migration on a throwaway SQLite database:
+#   deploy -> verify -> deploy (idempotent) -> full revert -> deploy again
+# This proves that every deploy applies, every verify actually asserts,
+# the --requires dependency chain is consistent, and every revert cleanly
+# undoes its deploy (leaving no orphaned tables/triggers behind).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Lint migration conventions (CLAUDE.md)
+        run: ./scripts/lint-migrations.sh
+
+  round-trip:
+    runs-on: ubuntu-latest
+    env:
+      # Keep the registry and the work DB off the repo tree.
+      TARGET: db:sqlite:/tmp/practice_exam_ci.db
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Sqitch + SQLite
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y sqitch libdbd-sqlite3-perl sqlite3
+
+      - name: Deploy
+        run: sqitch deploy -t "$TARGET" --verify
+
+      - name: Verify
+        run: sqitch verify -t "$TARGET"
+
+      - name: Re-deploy (must be a no-op / idempotent)
+        run: sqitch deploy -t "$TARGET"
+
+      - name: Revert everything
+        run: sqitch revert -y -t "$TARGET"
+
+      - name: Assert no user tables remain after revert
+        run: |
+          leftovers=$(sqlite3 /tmp/practice_exam_ci.db \
+            "SELECT name FROM sqlite_master WHERE type IN ('table','trigger','view','index') AND name NOT LIKE 'sqlite_%';")
+          if [ -n "$leftovers" ]; then
+            echo "::error::Revert left objects behind:"
+            echo "$leftovers"
+            exit 1
+          fi
+          echo "Clean: no user objects remain after full revert."
+
+      - name: Deploy again from scratch
+        run: sqitch deploy -t "$TARGET" --verify
