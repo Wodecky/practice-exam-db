@@ -1,5 +1,11 @@
 -- Revert practice-exam-db:20260531101722_add_exam_metadata from sqlite
 
+-- Foreign keys MUST be disabled for the DROP TABLE below: questions.exam_id has
+-- ON DELETE CASCADE, so with foreign_keys=ON dropping "exams" would cascade-delete
+-- every question and answer. The PRAGMA is a no-op inside a transaction, so it is
+-- issued before BEGIN; foreign_key_check before COMMIT verifies integrity.
+PRAGMA foreign_keys = OFF;
+
 BEGIN;
 
 DROP TABLE IF EXISTS exams_old;
@@ -26,5 +32,8 @@ WHEN NEW.updated_at IS OLD.updated_at
 BEGIN
     UPDATE exams SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
 END;
+
+-- Fail the transaction if the reconstruction left any dangling references.
+PRAGMA foreign_key_check;
 
 COMMIT;
