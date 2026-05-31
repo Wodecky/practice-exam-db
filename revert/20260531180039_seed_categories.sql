@@ -1,5 +1,11 @@
 -- Revert practice-exam-db:20260531180039_seed_categories from sqlite
 
+-- NOTE: exams.category_id REFERENCES categories(id) with no ON DELETE clause.
+-- If any exam still references one of these categories when this revert runs,
+-- the DELETE either fails (with PRAGMA foreign_keys=ON) or orphans the exam's
+-- category_id (the SQLite default, foreign_keys=OFF). Reassign or remove those
+-- exams before reverting if you need referential integrity preserved.
+
 BEGIN;
 
 DELETE FROM categories WHERE id IN (
