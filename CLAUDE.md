@@ -65,6 +65,26 @@ verify/<change_name>.sql   ← assertion that deploy succeeded (should error if 
 
 Changes are registered in `sqitch.plan` in dependency order. The `sqitch.conf` points to `practice_exam.db` as the default target.
 
+## Seed data: migrations vs. `seed/`
+
+Two kinds of seed data are handled differently:
+
+- **Reference / lookup data** (e.g. the exam `categories`) — small, fixed sets the
+  app needs to function. Seed these via a **Sqitch migration** with fixed UUID
+  primary keys and `INSERT OR IGNORE` so deploy stays idempotent and revert can
+  delete exactly those rows. These run automatically on `sqitch deploy`.
+- **Bulk content data** (e.g. individual exams with their questions and answers) —
+  large, optional, environment-specific. Keep these as plain `.sql` files under
+  `seed/`, **out of `deploy/`/`revert/`/`verify/` and out of `sqitch.plan`** so
+  `sqitch deploy` never runs them. Apply them by hand:
+
+  ```bash
+  sqlite3 practice_exam.db < seed/0020_20192_ldm_2019_fall.sql
+  ```
+
+  Make `seed/` scripts re-runnable (delete-then-insert by fixed id), and use the
+  same UUID hex id format as migrations.
+
 ## Writing verify scripts
 
 Verify scripts must **fail** (non-zero exit / SQL error) if the migration has not been applied, and **succeed** if it has. The standard pattern for SQLite is to query the object and let the query fail if it doesn't exist:
