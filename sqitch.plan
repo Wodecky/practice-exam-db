@@ -5,3 +5,5 @@
 20260518125243_create_exams 2026-05-18T12:52:43Z Maciej Krebs <maciej-krebs@maciej-krebs-B550-AORUS-ELITE> # Create exams table
 20260518125334_create_questions [20260518125243_create_exams] 2026-05-18T12:53:34Z Maciej Krebs <maciej-krebs@maciej-krebs-B550-AORUS-ELITE> # Create questions table
 20260518125335_create_answers [20260518125334_create_questions] 2026-05-18T12:53:35Z Maciej Krebs <maciej-krebs@maciej-krebs-B550-AORUS-ELITE> # Create answers table
+20260531101721_create_categories 2026-05-31T10:19:18Z Maciej Krebs <maciej-krebs@maciej-krebs-B550-AORUS-ELITE> # Create categories table
+20260531101722_add_exam_metadata [20260531101721_create_categories 20260518125243_create_exams] 2026-05-31T10:19:18Z Maciej Krebs <maciej-krebs@maciej-krebs-B550-AORUS-ELITE> # Add exam metadata fields
