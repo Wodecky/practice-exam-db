@@ -10,7 +10,7 @@ BEGIN;
 
 DROP TABLE IF EXISTS exams_old;
 
-CREATE TABLE exams_old (
+CREATE TABLE exams_old (  -- lint-ignore: table-reconstruction scratch table (mirrors the deploy, see header)
     id          TEXT NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
     title       TEXT NOT NULL,
     description TEXT,
@@ -22,7 +22,7 @@ INSERT INTO exams_old (id, title, description, created_at, updated_at)
 SELECT id, title, description, created_at, updated_at FROM exams;
 
 DROP TRIGGER IF EXISTS trg_exams_updated_at;
-DROP TABLE exams;
+DROP TABLE exams;  -- lint-ignore: table-reconstruction swap (mirrors the deploy, see header)
 ALTER TABLE exams_old RENAME TO exams;
 
 CREATE TRIGGER IF NOT EXISTS trg_exams_updated_at

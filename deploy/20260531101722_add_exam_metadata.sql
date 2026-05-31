@@ -21,7 +21,7 @@ BEGIN;
 
 DROP TABLE IF EXISTS exams_new;
 
-CREATE TABLE exams_new (
+CREATE TABLE exams_new (  -- lint-ignore: table-reconstruction scratch table (non-idempotent by design, see header)
     id            TEXT    NOT NULL PRIMARY KEY DEFAULT (lower(hex(randomblob(16)))),
     title         TEXT    NOT NULL,
     description   TEXT,
@@ -48,7 +48,7 @@ SELECT id, title, description, NULL,
 FROM exams;
 
 DROP TRIGGER IF EXISTS trg_exams_updated_at;
-DROP TABLE exams;
+DROP TABLE exams;  -- lint-ignore: table-reconstruction swap (non-idempotent by design, see header)
 ALTER TABLE exams_new RENAME TO exams;
 
 CREATE TRIGGER IF NOT EXISTS trg_exams_updated_at
