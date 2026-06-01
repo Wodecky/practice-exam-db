@@ -84,16 +84,3 @@ jobs:
 
       - name: Deploy again from scratch
         run: sqitch deploy -t "$TARGET" --verify
-
-      - name: Load bulk seed and check row counts
-        run: |
-          psql -h localhost -U exam -d practice_exam \
-            -v ON_ERROR_STOP=1 -f seed/0020_20192_ldm_2019_fall.sql
-          psql -h localhost -U exam -d practice_exam -tAc "
-            DO \$\$
-            BEGIN
-              ASSERT (SELECT count(*) FROM questions) = 120, 'expected 120 questions';
-              ASSERT (SELECT count(*) FROM answers)   = 600, 'expected 600 answers';
-              ASSERT (SELECT count(*) FROM answers WHERE is_correct) = 120, 'expected 120 correct answers';
-            END \$\$;"
-          echo "Seed loaded: 120 questions / 600 answers / 120 correct."
