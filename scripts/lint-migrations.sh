@@ -5,7 +5,7 @@
 #
 # Checks:
 #   1. Every deploy/revert/verify script name is prefixed YYYYMMDDHHMMSS_
-#   2. No AUTOINCREMENT and no INTEGER PRIMARY KEY (UUID TEXT keys only)
+#   2. No AUTOINCREMENT and no INTEGER PRIMARY KEY (native uuid keys only)
 #   3. deploy CREATE ... uses IF NOT EXISTS (idempotency)
 #   4. revert DROP ... uses IF EXISTS (idempotency)
 #   5. Any deploy that CREATEs a table also defines created_at, updated_at,
@@ -13,10 +13,9 @@
 #   6. Any revert whose deploy created a table DROPs its updated_at trigger
 #
 # Escape hatch: the idempotency checks (3, 4) skip any line carrying a
-# `-- lint-ignore` comment. This is for the deliberate SQLite table-
-# reconstruction pattern (CREATE TABLE <t>_new / DROP TABLE <t> / RENAME),
-# which CLAUDE.md exempts from idempotency. The round-trip CI job remains the
-# functional backstop for those non-idempotent changes.
+# `-- lint-ignore` comment, for any deliberately non-idempotent statement that
+# CLAUDE.md exempts. The round-trip CI job remains the functional backstop for
+# those changes.
 #
 set -uo pipefail
 
@@ -36,10 +35,10 @@ done
 
 # 2. Forbidden key idioms (deploy only) -------------------------------------
 if grep -rniE 'AUTOINCREMENT' deploy/*.sql 2>/dev/null; then
-    err "AUTOINCREMENT is forbidden — use TEXT UUID primary keys"
+    err "AUTOINCREMENT is forbidden — use 'id uuid PRIMARY KEY DEFAULT gen_random_uuid()'"
 fi
 if grep -rniE 'INTEGER[[:space:]]+PRIMARY[[:space:]]+KEY' deploy/*.sql 2>/dev/null; then
-    err "INTEGER PRIMARY KEY is forbidden — use 'id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(16))))'"
+    err "INTEGER PRIMARY KEY is forbidden — use 'id uuid PRIMARY KEY DEFAULT gen_random_uuid()'"
 fi
 
 # Flags non-idempotent CREATE/DROP statements. Inspects SQL only: the `--`
@@ -80,7 +79,9 @@ for f in deploy/*.sql; do
     grep -qiE 'CREATE[[:space:]]+TABLE' "$f" || continue
     grep -qiE '\bcreated_at\b'                 "$f" || err "$f: table-creating migration missing created_at column"
     grep -qiE '\bupdated_at\b'                 "$f" || err "$f: table-creating migration missing updated_at column"
-    grep -qiE 'TRIGGER[[:space:]]+IF[[:space:]]+NOT[[:space:]]+EXISTS[[:space:]]+trg_[a-z_]+_updated_at' "$f" \
+    # Postgres has no CREATE TRIGGER IF NOT EXISTS; CREATE OR REPLACE TRIGGER is
+    # the idempotent form. Accept either guard.
+    grep -qiE 'CREATE[[:space:]]+(OR[[:space:]]+REPLACE[[:space:]]+)?TRIGGER([[:space:]]+IF[[:space:]]+NOT[[:space:]]+EXISTS)?[[:space:]]+trg_[a-z_]+_updated_at' "$f" \
         || err "$f: table-creating migration missing trg_<table>_updated_at trigger"
 done
 

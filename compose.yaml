@@ -1,0 +1,33 @@
+# Local development Postgres for practice-exam-db.
+# NOT for production — credentials here are dev-only defaults.
+#
+#   docker compose up -d        # start in background
+#   docker compose logs -f db   # tail logs
+#   docker compose down         # stop (keeps data)
+#   docker compose down -v      # stop and wipe the data volume
+#
+# Override the defaults by copying .env.example to .env (which is gitignored).
+
+services:
+  db:
+    image: postgres:17
+    container_name: practice-exam-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-exam}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-exam}
+      POSTGRES_DB: ${POSTGRES_DB:-practice_exam}
+    ports:
+      # host:container — change the host side if 5432 is already in use locally
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # `down`-safe readiness probe so dependents can wait on `service_healthy`
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-exam} -d ${POSTGRES_DB:-practice_exam}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

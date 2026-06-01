@@ -1,8 +1,8 @@
--- Revert practice-exam-db:create_questions from sqlite
+-- Revert practice-exam-db:create_questions from pg
 
 BEGIN;
 
-DROP TRIGGER IF EXISTS trg_questions_updated_at;
+DROP TRIGGER IF EXISTS trg_questions_updated_at ON questions;
 DROP INDEX IF EXISTS idx_questions_exam_id;
 DROP TABLE IF EXISTS questions;
 

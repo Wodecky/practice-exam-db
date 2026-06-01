@@ -1,10 +1,10 @@
 name: sqitch
 
-# Round-trip every migration on a throwaway SQLite database:
+# Round-trip every migration on a throwaway PostgreSQL database:
 #   deploy -> verify -> deploy (idempotent) -> full revert -> deploy again
 # This proves that every deploy applies, every verify actually asserts,
 # the --requires dependency chain is consistent, and every revert cleanly
-# undoes its deploy (leaving no orphaned tables/triggers behind).
+# undoes its deploy (leaving no orphaned objects behind).
 
 on:
   pull_request:
@@ -21,16 +21,34 @@ jobs:
 
   round-trip:
     runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: exam
+          POSTGRES_PASSWORD: exam
+          POSTGRES_DB: practice_exam
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U exam -d practice_exam"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
-      # Keep the registry and the work DB off the repo tree.
-      TARGET: db:sqlite:/tmp/practice_exam_ci.db
+      TARGET: db:pg://exam:exam@localhost:5432/practice_exam
+      # Sqitch / psql pick this up so no password ends up on the command line.
+      PGPASSWORD: exam
+
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Sqitch + SQLite
+      - name: Install Sqitch + PostgreSQL client
         run: |
           sudo apt-get update
-          sudo apt-get install -y sqitch libdbd-sqlite3-perl sqlite3
+          sudo apt-get install -y sqitch libdbd-pg-perl postgresql-client
 
       - name: Deploy
         run: sqitch deploy -t "$TARGET" --verify
@@ -44,10 +62,19 @@ jobs:
       - name: Revert everything
         run: sqitch revert -y -t "$TARGET"
 
-      - name: Assert no user tables remain after revert
+      - name: Assert no user objects remain after revert
         run: |
-          leftovers=$(sqlite3 /tmp/practice_exam_ci.db \
-            "SELECT name FROM sqlite_master WHERE type IN ('table','trigger','view','index') AND name NOT LIKE 'sqlite_%';")
+          # Sqitch keeps its own registry in the separate "sqitch" schema, so a
+          # clean revert should leave the "public" schema with no tables, views,
+          # sequences, or functions.
+          leftovers=$(psql -h localhost -U exam -d practice_exam -tAc "
+            SELECT n.nspname || '.' || c.relname
+              FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+             WHERE n.nspname = 'public' AND c.relkind IN ('r','v','S')
+            UNION ALL
+            SELECT n.nspname || '.' || p.proname || '()'
+              FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+             WHERE n.nspname = 'public';")
           if [ -n "$leftovers" ]; then
             echo "::error::Revert left objects behind:"
             echo "$leftovers"
