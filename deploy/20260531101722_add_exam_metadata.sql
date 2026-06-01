@@ -10,10 +10,10 @@ BEGIN;
 
 ALTER TABLE exams
     ADD COLUMN IF NOT EXISTS category_id   uuid REFERENCES categories(id),
-    ADD COLUMN IF NOT EXISTS difficulty    int CHECK (difficulty BETWEEN 0 AND 100),
+    ADD COLUMN IF NOT EXISTS difficulty    int NOT NULL DEFAULT 100 CHECK (difficulty BETWEEN 0 AND 100),
     ADD COLUMN IF NOT EXISTS duration_mins int NOT NULL DEFAULT 120,
-    ADD COLUMN IF NOT EXISTS students      int,
-    ADD COLUMN IF NOT EXISTS rating        numeric(2,1) CHECK (rating BETWEEN 1.0 AND 5.0),
+    ADD COLUMN IF NOT EXISTS students      int NOT NULL DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS rating        numeric(2,1) NOT NULL DEFAULT 5.0 CHECK (rating BETWEEN 1.0 AND 5.0),
     ADD COLUMN IF NOT EXISTS popular       boolean NOT NULL DEFAULT false,
     ADD COLUMN IF NOT EXISTS is_new        boolean NOT NULL DEFAULT false;
 

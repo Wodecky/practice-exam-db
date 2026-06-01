@@ -6,8 +6,8 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS categories (
     id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     name       text NOT NULL,
-    icon       text,
-    color      text,
+    icon       text NOT NULL,
+    color      text NOT NULL,
     created_at timestamptz NOT NULL DEFAULT now(),
     updated_at timestamptz NOT NULL DEFAULT now()
 );
