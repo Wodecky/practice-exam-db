@@ -3,3 +3,6 @@
 *.db-shm
 *.db-wal
 .env
+
+# Bulk content seed data — applied by hand, never committed (see CLAUDE.md)
+/seed/
