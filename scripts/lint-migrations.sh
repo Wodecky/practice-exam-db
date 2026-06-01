@@ -35,7 +35,7 @@ done
 
 # 2. Forbidden key idioms (deploy only) -------------------------------------
 if grep -rniE 'AUTOINCREMENT' deploy/*.sql 2>/dev/null; then
-    err "AUTOINCREMENT is forbidden — use TEXT UUID primary keys"
+    err "AUTOINCREMENT is forbidden — use 'id uuid PRIMARY KEY DEFAULT gen_random_uuid()'"
 fi
 if grep -rniE 'INTEGER[[:space:]]+PRIMARY[[:space:]]+KEY' deploy/*.sql 2>/dev/null; then
     err "INTEGER PRIMARY KEY is forbidden — use 'id uuid PRIMARY KEY DEFAULT gen_random_uuid()'"
